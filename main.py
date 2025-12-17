@@ -1,36 +1,30 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import uuid
+import os
+from openai import OpenAI
 
-app = FastAPI(title="AURIX API")
+app = FastAPI()
 
-jobs = {}
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-class MusicRequest(BaseModel):
+class Prompt(BaseModel):
     prompt: str
-    duration: int = 30
-    style: str = "pop"
 
-@app.post("/music/request")
-def request_music(data: MusicRequest):
-    job_id = str(uuid.uuid4())
-    jobs[job_id] = {
-        "status": "pending",
-        "prompt": data.prompt,
-        "duration": data.duration,
-        "style": data.style,
-        "file": None
-    }
-    return {"job_id": job_id}
+@app.get("/")
+def root():
+    return {"status": "ok", "service": "aurix-backend"}
 
-@app.get("/music/status/{job_id}")
-def music_status(job_id: str):
-    return jobs.get(job_id, {"status": "ok", "service": "aurix-backend"})
-
-@app.post("/music/complete/{job_id}")
-def complete_job(job_id: str, file_url: str):
-    if job_id in jobs:
-        jobs[job_id]["status"] = "done"
-        jobs[job_id]["file"] = file_url
-        return {"ok": True}
-    return {"error": "job not found"}
+@app.post("/generate")
+def generate(data: Prompt):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "user", "content": data.prompt}
+            ]
+        )
+        return {
+            "result": response.choices[0].message.content
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
