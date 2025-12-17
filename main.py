@@ -25,7 +25,7 @@ def request_music(data: MusicRequest):
 
 @app.get("/music/status/{job_id}")
 def music_status(job_id: str):
-    return jobs.get(job_id, {"error": "not found"})
+    return jobs.get(job_id, {"status": "ok", "service": "aurix-backend"})
 
 @app.post("/music/complete/{job_id}")
 def complete_job(job_id: str, file_url: str):
