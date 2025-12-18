@@ -1,13 +1,16 @@
-from fastapi import Header
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 import os
-from openai import OpenAI
+import openai
+from dotenv import load_dotenv
 
-app = FastAPI()
+load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai.api_key = os.getenv("OPENAI_API_KEY")
 API_KEY = os.getenv("AURIX_API_KEY")
+
+app = FastAPI(title="AURIX AI API")
+
 class Prompt(BaseModel):
     prompt: str
 
@@ -17,13 +20,19 @@ def root():
 
 @app.post("/generate")
 def generate(data: Prompt, x_api_key: str = Header(None)):
-    if x_api_key != API_KEY:
+    if API_KEY and x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": data.prompt}]
-    )
-    return {"result": response.choices[0].message.content}
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "user", "content": data.prompt}
+            ]
+        )
+        return {
+            "result": response.choices[0].message.content
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
